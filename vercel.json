@@ -5,7 +5,7 @@
     "rewrites": [
         {
             "source": "/api/(.*)",
-            "destination": "https://REPLACE_WITH_YOUR_RENDER_URL/api/$1"
+            "destination": "https://web3d-40y6.onrender.com/api/$1"
         },
         {
             "source": "/((?!api/.*).*)",

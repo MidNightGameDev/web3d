@@ -69,7 +69,10 @@ router.put('/users/email/:email', async (req, res) => {
 
 router.get('/projects', async (req, res) => {
     try {
-        const projects = await Project.find().sort({ createdAt: -1 });
+        const filter = {};
+        if (req.query.ownerId) filter.ownerId = req.query.ownerId;
+        if (req.query.status) filter.status = req.query.status;
+        const projects = await Project.find(filter).sort({ createdAt: -1 });
         res.json(projects);
     } catch (err) {
         res.status(500).json({ error: err.message });

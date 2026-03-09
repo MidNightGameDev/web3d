@@ -14,6 +14,21 @@ export async function loadProjects() {
   }
 }
 
+// โหลดเฉพาะ projects ของ user คนนั้น (ไม่ดึงของคนอื่น)
+export async function loadMyProjects(userId) {
+  if (!userId) return [];
+  try {
+    const res = await fetch(`/api/projects?ownerId=${encodeURIComponent(userId)}`);
+    if (!res.ok) throw new Error('Failed to fetch projects');
+    const data = await res.json();
+    return ensureProjectSchema(data);
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+}
+
+
 // Ensure schema is still useful for initial syncs
 export function ensureProjectSchema(projects) {
   return (projects || []).map((p) => ({

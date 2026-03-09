@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import heroBanner from "../assets/ChatGPT Image Feb 27, 2026, 01_50_30 PM.png";
-import { canCreateProject, createProjectWithLimit, listProjects as loadProjects, LIMITS, getCredits } from '../lib/store.js';
+import { canCreateProject, createProjectWithLimit, loadMyProjects, LIMITS, getCredits } from '../lib/store.js';
 import { getCurrentUser, clearSession } from '../lib/auth.js';
 
 function uid() {
@@ -16,10 +16,9 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     async function init() {
-      const allProjects = await loadProjects();
       const currentUser = getCurrentUser();
-      const filtered = allProjects.filter(p => p.ownerId === currentUser?.id);
-      setUserProjects(filtered);
+      const myProjects = await loadMyProjects(currentUser?.id);
+      setUserProjects(myProjects);
     }
     init();
   }, []);
@@ -36,14 +35,15 @@ export default function Dashboard() {
   };
 
   const ensureDefaultProject = async () => {
-    let list = await loadProjects();
+    const currentUser = getCurrentUser();
+    let list = await loadMyProjects(currentUser?.id);
 
     if (!list.length) {
       try {
         const next = await createProjectWithLimit({
           name: "My First Project",
-          ownerId: getCurrentUser()?.id,
-          ownerName: getCurrentUser()?.username,
+          ownerId: currentUser?.id,
+          ownerName: currentUser?.username,
           price: 10,
         });
         const p = next[0];
@@ -56,7 +56,6 @@ export default function Dashboard() {
 
     const p = list[0];
     if (!p.scenes || p.scenes.length === 0) {
-      // should ideally not happen with backend schema defaults, but just in case
       return { projectId: p.id, sceneId: 'default' };
     }
 
@@ -75,21 +74,23 @@ export default function Dashboard() {
       }
     }
 
-    const list = await loadProjects();
+    const currentUser = getCurrentUser();
+    const list = await loadMyProjects(currentUser?.id);
     const newName = `New Project ${list.length + 1}`;
 
     try {
       const next = await createProjectWithLimit({
         name: newName,
-        ownerId: getCurrentUser()?.id,
-        ownerName: getCurrentUser()?.username,
+        ownerId: currentUser?.id,
+        ownerName: currentUser?.username,
         price: 10,
       });
-      setUserProjects(next.filter(p => p.ownerId === getCurrentUser()?.id));
-      setCredits(getCurrentUser()?.credits ?? 0);
-      const id0 = next[0].id;
-      const sid = next[0].scenes?.[0]?.id;
-      openEditor(id0, sid);
+      // Refresh the user's own projects after creation
+      const myLatest = await loadMyProjects(currentUser?.id);
+      setUserProjects(myLatest);
+      setCredits(currentUser?.credits ?? 0);
+      const newProject = myLatest[0];
+      if (newProject) openEditor(newProject.id, newProject.scenes?.[0]?.id);
     } catch (err) {
       alert(err.message);
     }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createProjectWithLimit, canCreateProject, publishProject, unpublishProject, loadProjects, deleteProject, updateProject } from "../lib/store.js";
+import { createProjectWithLimit, canCreateProject, publishProject, unpublishProject, loadMyProjects, deleteProject, updateProject } from "../lib/store.js";
 import { getCurrentUser, clearSession } from "../lib/auth.js";
 
 export default function Projects() {
@@ -10,7 +10,8 @@ export default function Projects() {
   const [credits, setCredits] = useState(getCurrentUser()?.credits ?? 0);
 
   const fetchProjects = async () => {
-    const list = await loadProjects();
+    const user = getCurrentUser();
+    const list = await loadMyProjects(user?.id);
     setProjects(list);
   };
 
@@ -38,17 +39,20 @@ export default function Projects() {
     }
 
     try {
-      const next = await createProjectWithLimit({
+      await createProjectWithLimit({
         name,
         ownerId: getCurrentUser()?.id,
         ownerName: getCurrentUser()?.username,
         price: 10,
       });
-      setProjects(next);
-      setCredits(getCurrentUser()?.credits ?? 0);
+      // Reload only user's own projects
+      const user = getCurrentUser();
+      const myProjects = await loadMyProjects(user?.id);
+      setProjects(myProjects);
+      setCredits(user?.credits ?? 0);
 
-      // Navigate to the editor for the first scene of the new project
-      const newProject = next[0]; // createProject prepends new project
+      // Navigate to the editor for the newly created project (first in list)
+      const newProject = myProjects[0];
       if (newProject && newProject.scenes && newProject.scenes.length > 0) {
         navigate(`/editor/${newProject.id}/${newProject.scenes[0].id}`);
       }
@@ -59,8 +63,11 @@ export default function Projects() {
 
   const handleDelete = async (project) => {
     if (!confirm('Delete this project?')) return;
-    const next = await deleteProject(project.id);
-    if (next) setProjects(next);
+    await deleteProject(project.id);
+    // Reload only user's own projects after delete
+    const user = getCurrentUser();
+    const myProjects = await loadMyProjects(user?.id);
+    setProjects(myProjects);
   };
 
   const handleOpen = (project) => {
